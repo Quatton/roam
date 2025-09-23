@@ -18,15 +18,16 @@ async def evaluate_code(request: CodeRequest):
     try:
         # WARNING: Using exec can be dangerous and is not recommended for untrusted input.
         from typing import Any
+
         namespace: dict[str, Any] = {}
         exec(request.code, namespace)
-        
+
         # The code should end with an expression that we can capture
         # For function calls, we'll capture the last expression
-        lines = request.code.strip().split('\n')
+        lines = request.code.strip().split("\n")
         last_line = lines[-1].strip()
-        
-        if last_line and not last_line.startswith('#'):
+
+        if last_line and not last_line.startswith("#"):
             # If the last line looks like a function call or expression, evaluate it
             try:
                 result = eval(last_line, namespace)
@@ -36,7 +37,7 @@ async def evaluate_code(request: CodeRequest):
                 return {"result": None}
         else:
             return {"result": None}
-            
+
     except Exception as e:
         return {"error": str(e)}
 

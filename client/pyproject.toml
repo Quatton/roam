@@ -4,9 +4,7 @@ version = "0.1.0"
 description = "Client library for Run On Another Machine"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "httpx>=0.28.1",
-]
+dependencies = ["httpx>=0.28.1"]
 
 [build-system]
 requires = ["hatchling"]

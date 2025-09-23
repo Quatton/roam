@@ -5,7 +5,7 @@
       "path": "./controller"
     },
     {
-      "name": "Client", 
+      "name": "Client",
       "path": "./client"
     },
     {
@@ -14,11 +14,7 @@
     }
   ],
   "settings": {
-    "python.analysis.extraPaths": [
-      "./client/src",
-      "./controller",
-      "./e2e"
-    ],
+    "python.analysis.extraPaths": ["./client/src", "./controller", "./e2e"],
     "python.analysis.autoImportCompletions": true,
     "python.analysis.autoSearchPaths": true
   },
