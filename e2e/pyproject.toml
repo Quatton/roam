@@ -1,0 +1,14 @@
+[project]
+name = "e2e"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "roam-client",
+]
+
+[tool.uv.sources]
+roam-client = { path = "../client" }

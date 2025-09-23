@@ -1,0 +1,32 @@
+{
+  "folders": [
+    {
+      "name": "Controller",
+      "path": "./controller"
+    },
+    {
+      "name": "Client", 
+      "path": "./client"
+    },
+    {
+      "name": "E2E Tests",
+      "path": "./e2e"
+    }
+  ],
+  "settings": {
+    "python.analysis.extraPaths": [
+      "./client/src",
+      "./controller",
+      "./e2e"
+    ],
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoSearchPaths": true
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.pylance",
+      "charliermarsh.ruff"
+    ]
+  }
+}

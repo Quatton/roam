@@ -1,0 +1,19 @@
+[project]
+name = "roam-client"
+version = "0.1.0"
+description = "Client library for Run On Another Machine"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/roam_client"]
+
+[tool.uv]
+dev-dependencies = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0"]
