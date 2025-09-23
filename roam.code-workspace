@@ -1,7 +1,11 @@
 {
   "folders": [
     {
-      "name": "Controller", 
+      "name": "Root",
+      "path": "."
+    },
+    {
+      "name": "Controller",
       "path": "./controller"
     },
     {
@@ -17,10 +21,14 @@
       "path": "./playground"
     }
   ],
+  "settings": {
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoSearchPaths": true
+  },
   "extensions": {
     "recommendations": [
       "ms-python.python",
-      "ms-python.pylance", 
+      "ms-python.pylance",
       "charliermarsh.ruff"
     ]
   }
