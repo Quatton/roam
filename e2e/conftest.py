@@ -1,4 +1,5 @@
 """Configuration for e2e tests."""
+
 import subprocess
 import time
 from pathlib import Path
@@ -15,12 +16,12 @@ controller_process = None
 def start_controller():
     """Start the controller server for testing."""
     global controller_process
-    
+
     controller_process = subprocess.Popen(
         ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"],
-        cwd=str(CONTROLLER_PATH)
+        cwd=str(CONTROLLER_PATH),
     )
-    
+
     # Give it time to start up
     time.sleep(3)
 

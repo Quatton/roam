@@ -1,3 +1,3 @@
 {
-    "python.analysis.extraPaths": ["./client/src"]
+  "python.analysis.extraPaths": ["../client/src"]
 }

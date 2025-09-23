@@ -4,11 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "pytest>=8.4.2",
-    "pytest-asyncio>=1.2.0",
-    "remote-env",
-]
+dependencies = ["pytest>=8.4.2", "pytest-asyncio>=1.2.0", "remote-env"]
 
 [tool.uv.sources]
 remote-env = { path = "../client" }
