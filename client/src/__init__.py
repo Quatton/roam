@@ -1,5 +1,5 @@
-"""Roam Client - Remote code execution library."""
+"""Remote Environment - Generic remote code execution library."""
 
-from .roam_client import Env, ImageSpec, Runtime, RemoteExecutionError
+from .remote_env import Env, RemoteExecutionError
 
-__all__ = ["Env", "ImageSpec", "Runtime", "RemoteExecutionError"]
+__all__ = ["Env", "RemoteExecutionError"]

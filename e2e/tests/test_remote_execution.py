@@ -1,37 +1,24 @@
 """
-End-to-end integration tests for roam client and controller.
+End-to-end tests for remote code execution.
 """
-
-import subprocess
-import time
 import pytest
-from roam_client import Env
+from remote_env import Env
+import sys
+from pathlib import Path
 
-
-# Global controller process
-controller_process = None
+# Add parent directory to path for conftest import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from conftest import start_controller, stop_controller
 
 
 def setup_module():
     """Start the controller server before running tests."""
-    global controller_process
-
-    # Start the controller on port 8001
-    controller_process = subprocess.Popen(
-        ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"],
-        cwd="/Users/quatton/Documents/GitHub/roam/controller",
-    )
-
-    # Give it time to start up
-    time.sleep(3)
+    start_controller()
 
 
 def teardown_module():
     """Stop the controller server after tests."""
-    global controller_process
-    if controller_process:
-        controller_process.terminate()
-        controller_process.wait()
+    stop_controller()
 
 
 @pytest.mark.asyncio

@@ -5,16 +5,19 @@
       "path": "./controller"
     },
     {
-      "name": "Client",
+      "name": "Client", 
       "path": "./client"
     },
     {
       "name": "E2E Tests",
       "path": "./e2e"
+    },
+    {
+      "name": "Playground",
+      "path": "./playground"
     }
   ],
   "settings": {
-    "python.analysis.extraPaths": ["./client/src", "./controller", "./e2e"],
     "python.analysis.autoImportCompletions": true,
     "python.analysis.autoSearchPaths": true
   },

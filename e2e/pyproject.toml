@@ -7,8 +7,8 @@ requires-python = ">=3.12"
 dependencies = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
-    "roam-client",
+    "remote-env",
 ]
 
 [tool.uv.sources]
-roam-client = { path = "../client" }
+remote-env = { path = "../client" }

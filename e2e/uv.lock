@@ -40,14 +40,14 @@ source = { virtual = "." }
 dependencies = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
-    { name = "roam-client" },
+    { name = "remote-env" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
-    { name = "roam-client", directory = "../client" },
+    { name = "remote-env", directory = "../client" },
 ]
 
 [[package]]
@@ -162,7 +162,7 @@ wheels = [
 ]
 
 [[package]]
-name = "roam-client"
+name = "remote-env"
 version = "0.1.0"
 source = { directory = "../client" }
 dependencies = [

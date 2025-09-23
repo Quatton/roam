@@ -1,9 +1,9 @@
 """
-Example usage of the roam client.
+Example usage of the remote environment client.
 """
 
 import asyncio
-from roam_client import Env
+from remote_env import Env
 
 
 async def main():

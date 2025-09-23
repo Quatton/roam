@@ -132,8 +132,3 @@ class Env:
 class RemoteExecutionError(Exception):
     """Exception raised when remote execution fails."""
     pass
-
-
-# Convenience alias for common use cases
-ImageSpec = Env  # For container/image-like specifications
-Runtime = Env    # For runtime environments
