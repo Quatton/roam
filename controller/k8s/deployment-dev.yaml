@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: roam-controller-dev
+  labels:
+    app: roam-controller-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: roam-controller-dev
+  template:
+    metadata:
+      labels:
+        app: roam-controller-dev
+    spec:
+      containers:
+      - name: controller
+        image: ghcr.io/astral-sh/uv:debian
+        ports:
+        - containerPort: 8001
+        workingDir: /app
+        command: 
+          - /bin/bash
+          - -c
+          - |
+            cd /app &&
+            uv sync &&
+            uv run python -m app.main
+        env:
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "8001"
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /Users/quatton/Documents/GitHub/roam/controller
+          type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: roam-controller-dev-service
+  labels:
+    app: roam-controller-dev
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8001
+    targetPort: 8001
+    protocol: TCP
+  selector:
+    app: roam-controller-dev

@@ -1,0 +1,31 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: roam-controller
+servers: 1
+agents: 1
+kubeAPI:
+  host: "0.0.0.0"
+  hostIP: "127.0.0.1"
+  hostPort: "6550"
+image: docker.io/rancher/k3s:v1.28.8-k3s1
+ports:
+  - port: 8001:8001
+    nodeFilters:
+      - loadbalancer
+  - port: 30080:30080
+    nodeFilters:
+      - server:0
+options:
+  k3d:
+    wait: true
+    timeout: "60s"
+    disableLoadbalancer: false
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
