@@ -1,17 +1,20 @@
 """
-Generic environment decorator factory for remote code execution.
+SSE-based environment decorator for ROAM.
 """
 
 import inspect
 from functools import wraps
 from typing import Any, Callable, TypeVar
 import httpx
+import json
+import asyncio
+from urllib.parse import urljoin
 
 F = TypeVar("F", bound=Callable[..., Any])
 
 
 class Env:
-    """Environment decorator factory for remote code execution."""
+    """Environment decorator factory for remote code execution using SSE."""
 
     def __init__(
         self,
@@ -23,6 +26,7 @@ class Env:
 
         Args:
             base_url: The base URL of the remote execution server
+            should_run_locally: Whether to run functions locally or remotely
         """
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient()
@@ -59,17 +63,20 @@ class Env:
         # For convenience, also add a sync method
         @wraps(fn)
         def sync_wrapper(*args, **kwargs):
-            import asyncio
-
             try:
-                asyncio.get_running_loop()
-                # If we're already in an async context, this won't work
+                # Check if we're already in an async context
+                loop = asyncio.get_running_loop()
+                # If we get here, we're in an async context
                 raise RuntimeError(
                     "Cannot call sync version from async context. Use 'await' instead."
                 )
-            except RuntimeError:
-                # No running loop, we can create one
-                return asyncio.run(self._execute_remote(fn, *args, **kwargs))
+            except RuntimeError as e:
+                if "no running event loop" in str(e):
+                    # No running loop, we can create one
+                    return asyncio.run(self._execute_remote(fn, *args, **kwargs))
+                else:
+                    # Re-raise the "already in async context" error
+                    raise
 
         # Attach sync method to async wrapper for convenience
         async_wrapper.sync = sync_wrapper  # type: ignore
@@ -84,7 +91,7 @@ class Env:
 
     async def _execute_remote(self, fn: Callable, *args, **kwargs) -> Any:
         """
-        Execute a function remotely by spinning up a dedicated job container.
+        Execute a function remotely using Redis + Celery + SSE.
 
         Args:
             fn: The function to execute
@@ -118,151 +125,89 @@ class Env:
 
         clean_source = "\n".join(func_lines).strip()
 
-        # Build the execution code with proper output handling
+        # Build the execution code - return the result instead of printing
         if args or kwargs:
             # Convert args and kwargs to string representation
             args_str = ", ".join(repr(arg) for arg in args)
             kwargs_str = ", ".join(f"{k}={repr(v)}" for k, v in kwargs.items())
             call_args = ", ".join(filter(None, [args_str, kwargs_str]))
-            execution_code = f"{clean_source}\n\nresult = {fn.__name__}({call_args})\nprint(repr(result))"
+            execution_code = f"{clean_source}\n\n# Call the function and capture result\nresult = {fn.__name__}({call_args})"
         else:
-            execution_code = (
-                f"{clean_source}\n\nresult = {fn.__name__}()\nprint(repr(result))"
-            )
+            execution_code = f"{clean_source}\n\n# Call the function and capture result\nresult = {fn.__name__}()"
 
-        # Detect calling context and dependencies
-        context = self._detect_context(fn)
-        requirements = self._extract_requirements(context)
-
-        # Submit job
         try:
+            # Submit job to controller
             job_response = await self._client.post(
-                f"{self.base_url}/job",
-                json={
-                    "code": execution_code,
-                    "context": context,
-                    "requirements": requirements,
-                },
+                f"{self.base_url}/job", json={"code": execution_code}
             )
             job_response.raise_for_status()
             job_data = job_response.json()
-            job_id = job_data["job_id"]
+            task_id = job_data["task_id"]
+            stream_url = job_data["stream_url"]
 
-            # Poll for completion
-            return await self._wait_for_job(job_id)
+            # Connect to SSE stream for real-time results
+            return await self._stream_result(stream_url)
 
-        except httpx.RequestError as e:
-            raise RemoteExecutionError(f"Request failed: {e}")
-        except httpx.HTTPStatusError as e:
-            raise RemoteExecutionError(
-                f"HTTP error {e.response.status_code}: {e.response.text}"
+        except Exception as e:
+            import traceback
+
+            error_details = traceback.format_exc()
+            raise RuntimeError(
+                f"Remote execution failed: {e}\nDetails: {error_details}"
             )
 
-    def _detect_context(self, fn: Callable) -> dict:
-        """Detect the calling context of the function."""
-        import os
-        from pathlib import Path
+    async def _stream_result(self, stream_url: str) -> Any:
+        """
+        Connect to SSE stream and wait for execution result.
 
-        # Get the file where the function is defined
-        try:
-            file_path = inspect.getfile(fn)
-            file_path = os.path.abspath(file_path)
-        except (TypeError, OSError):
-            file_path = None
+        Args:
+            stream_url: The SSE endpoint URL
 
-        context = {
-            "function_name": fn.__name__,
-            "file_path": file_path,
-        }
+        Returns:
+            The execution result
+        """
+        full_url = urljoin(self.base_url, stream_url)
+        print(f"🔗 Connecting to SSE stream: {full_url}")
 
-        if file_path:
-            # Look for pyproject.toml or requirements.txt in parent directories
-            path = Path(file_path)
-            for parent in [path.parent] + list(path.parents):
-                pyproject_path = parent / "pyproject.toml"
-                requirements_path = parent / "requirements.txt"
+        async with self._client.stream("GET", full_url, timeout=30.0) as response:
+            response.raise_for_status()
 
-                if pyproject_path.exists():
-                    context["pyproject_path"] = str(pyproject_path)
-                    break
-                elif requirements_path.exists():
-                    context["requirements_path"] = str(requirements_path)
-                    break
+            async for line in response.aiter_lines():
+                if line.startswith("data: "):
+                    data_str = line[6:]  # Remove "data: " prefix
+                    try:
+                        event = json.loads(data_str)
+                        event_type = event.get("type")
 
-        return context
+                        if event_type == "connected":
+                            print(f"🔗 Connected to task {event.get('task_id')}")
+                            continue
 
-    def _extract_requirements(self, context: dict) -> list[str]:
-        """Extract requirements from the context."""
-        requirements = []
+                        elif event_type == "result":
+                            result_data = event.get("data", {})
 
-        if "pyproject_path" in context:
-            # Parse pyproject.toml for dependencies
-            try:
-                import tomllib
+                            if result_data.get("success"):
+                                # Successfully executed - return the actual result
+                                return result_data.get("return_value")
+                            else:
+                                # Execution failed
+                                error_msg = result_data.get("error", "Unknown error")
+                                traceback = result_data.get("traceback", "")
+                                raise RuntimeError(
+                                    f"Remote execution failed: {error_msg}\n{traceback}"
+                                )
 
-                with open(context["pyproject_path"], "rb") as f:
-                    pyproject = tomllib.load(f)
+                        elif event_type == "complete":
+                            # Stream completed but no result received
+                            raise RuntimeError("Task completed but no result received")
 
-                deps = pyproject.get("project", {}).get("dependencies", [])
-                requirements.extend(deps)
-            except Exception:
-                pass  # Fallback to no requirements
+                        elif event_type == "error":
+                            error_msg = event.get("error", "Unknown streaming error")
+                            raise RuntimeError(f"Streaming error: {error_msg}")
 
-        elif "requirements_path" in context:
-            try:
-                with open(context["requirements_path"], "r") as f:
-                    requirements = [
-                        line.strip()
-                        for line in f
-                        if line.strip() and not line.startswith("#")
-                    ]
-            except Exception:
-                pass
+                    except json.JSONDecodeError:
+                        # Skip malformed JSON
+                        continue
 
-        return requirements
-
-    async def _wait_for_job(
-        self, job_id: str, timeout: int = 300, poll_interval: int = 1
-    ) -> Any:
-        """Wait for a job to complete and return its result."""
-        import asyncio
-        import time
-
-        start_time = time.time()
-
-        while time.time() - start_time < timeout:
-            try:
-                response = await self._client.get(f"{self.base_url}/job/{job_id}")
-                response.raise_for_status()
-                job_data = response.json()
-
-                status = job_data.get("status")
-
-                if status == "completed":
-                    result = job_data.get("result")
-                    # If result is a string representation, try to evaluate it
-                    if isinstance(result, str):
-                        try:
-                            return eval(result)
-                        except Exception:
-                            return result
-                    return result
-                elif status == "failed":
-                    error = job_data.get("error", "Unknown error")
-                    raise RemoteExecutionError(f"Job failed: {error}")
-                elif status in ["pending", "running"]:
-                    await asyncio.sleep(poll_interval)
-                    continue
-                else:
-                    raise RemoteExecutionError(f"Unknown job status: {status}")
-
-            except httpx.RequestError as e:
-                raise RemoteExecutionError(f"Failed to check job status: {e}")
-
-        raise RemoteExecutionError(f"Job {job_id} timed out after {timeout} seconds")
-
-
-class RemoteExecutionError(Exception):
-    """Exception raised when remote execution fails."""
-
-    pass
+        # If we reach here, stream ended without a result
+        raise RuntimeError("Stream ended without receiving result")

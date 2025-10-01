@@ -100,10 +100,16 @@ else
     if [[ -f k8s/namespace.yaml ]]; then
         kubectl apply -f k8s/namespace.yaml
     fi
-    if [[ -f k8s/configmap.yaml ]]; then
-        kubectl apply -f k8s/configmap.yaml
+    if [[ -f k8s/rbac.yaml ]]; then
+        kubectl apply -f k8s/rbac.yaml
+    fi
+    if [[ -f k8s/redis.yaml ]]; then
+        kubectl apply -f k8s/redis.yaml
     fi
     kubectl apply -f k8s/deployment-dev.yaml
+    if [[ -f k8s/workers.yaml ]]; then
+        kubectl apply -f k8s/workers.yaml
+    fi
     if [[ -f k8s/service.yaml ]]; then
         kubectl apply -f k8s/service.yaml
     fi

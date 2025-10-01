@@ -17,6 +17,14 @@
       "path": "./e2e"
     },
     {
+      "name": "Deploy",
+      "path": "./deploy"
+    },
+    {
+      "name": "Worker",
+      "path": "./worker"
+    },
+    {
       "name": "Playground",
       "path": "./playground"
     }

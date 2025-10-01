@@ -1,3 +1,3 @@
-from .env import Env, RemoteExecutionError
+from .env import Env
 
-__all__ = ["Env", "RemoteExecutionError"]
+__all__ = ["Env"]

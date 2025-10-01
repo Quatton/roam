@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: roam-workers
+  namespace: roam-controller
+  labels:
+    app: roam-workers
+spec:
+  replicas: 2  # Start with 2 warm workers
+  selector:
+    matchLabels:
+      app: roam-workers
+  template:
+    metadata:
+      labels:
+        app: roam-workers
+    spec:
+      containers:
+      - name: worker
+        image: ghcr.io/astral-sh/uv:debian
+        workingDir: /app
+        command:
+          - /bin/bash
+          - -c
+          - |
+            cd /app &&
+            export UV_PROJECT_ENVIRONMENT=/tmp/venv &&
+            uv sync &&
+            uv run python app/persistent_worker.py
+        env:
+        - name: REDIS_HOST
+          value: "redis.roam-controller.svc.cluster.local"
+        volumeMounts:
+        - name: controller-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+      volumes:
+      - name: controller-code
+        hostPath:
+          path: /app/controller
+          type: Directory
+      restartPolicy: Always
