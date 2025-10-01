@@ -8,7 +8,10 @@ from typing import Any, Callable, TypeVar
 import httpx
 import json
 import asyncio
+import logging
 from urllib.parse import urljoin
+
+logger = logging.getLogger("remote_env")
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -65,7 +68,7 @@ class Env:
         def sync_wrapper(*args, **kwargs):
             try:
                 # Check if we're already in an async context
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # If we get here, we're in an async context
                 raise RuntimeError(
                     "Cannot call sync version from async context. Use 'await' instead."
@@ -142,7 +145,6 @@ class Env:
             )
             job_response.raise_for_status()
             job_data = job_response.json()
-            task_id = job_data["task_id"]
             stream_url = job_data["stream_url"]
 
             # Connect to SSE stream for real-time results
@@ -167,7 +169,7 @@ class Env:
             The execution result
         """
         full_url = urljoin(self.base_url, stream_url)
-        print(f"🔗 Connecting to SSE stream: {full_url}")
+        logger.debug(f"🔗 Connecting to SSE stream: {full_url}")
 
         async with self._client.stream("GET", full_url, timeout=30.0) as response:
             response.raise_for_status()
@@ -180,7 +182,7 @@ class Env:
                         event_type = event.get("type")
 
                         if event_type == "connected":
-                            print(f"🔗 Connected to task {event.get('task_id')}")
+                            logger.debug(f"🔗 Connected to task {event.get('task_id')}")
                             continue
 
                         elif event_type == "result":

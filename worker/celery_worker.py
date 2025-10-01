@@ -1,5 +1,6 @@
 """
 Celery worker for executing remote code.
+It's not tested. Don't use it yet.
 """
 
 import json

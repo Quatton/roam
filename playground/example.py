@@ -3,7 +3,13 @@ Example usage of the remote environment client.
 """
 
 import os
+import logging
 from remote_env import Env
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(levelname)s: %(message)s",
+)
 
 
 env = Env(

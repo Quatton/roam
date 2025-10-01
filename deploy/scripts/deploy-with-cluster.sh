@@ -2,7 +2,41 @@
 
 set -euo pipefail
 
-# Default mode
+# Check if cluster exists, create if it doesn't
+if ! k3d cluster list | grep -q "roam-dev"; then
+    echo "🏗️  Creating k3d cluster..."
+    
+    # Get the absolute paths to the controller and worker directories
+    CONTROLLER_DIR="$(dirname "$(pwd)")/controller"
+    WORKER_DIR="$(dirname "$(pwd)")/worker"
+    
+    if [[ ! -d "$CONTROLLER_DIR" ]]; then
+        echo "❌ Controller directory not found at: $CONTROLLER_DIR"
+        echo "   Please run this script from the deploy directory"
+        exit 1
+    fi
+    
+    if [[ ! -d "$WORKER_DIR" ]]; then
+        echo "❌ Worker directory not found at: $WORKER_DIR"
+        echo "   Please run this script from the deploy directory"
+        exit 1
+    fi
+    
+    echo "📁 Mounting controller directory: $CONTROLLER_DIR"
+    echo "📁 Mounting worker directory: $WORKER_DIR"
+    k3d cluster create roam-dev \
+        --agents 1 --servers 1 \
+        -p "80:80@loadbalancer" \
+        -p "443:443@loadbalancer" \
+        -p "8001:8001@loadbalancer" \
+        --volume "$CONTROLLER_DIR:/app/controller@server:*;agent:*" \
+        --volume "$WORKER_DIR:/app/worker@server:*;agent:*"
+    
+    echo "✅ k3d cluster created successfully"
+else
+    echo "📋 Using existing k3d cluster 'roam-dev'"
+fi
+
 MODE="${1:-prod}"
 
 if [[ "$MODE" != "prod" && "$MODE" != "dev" ]]; then
@@ -27,21 +61,6 @@ if ! command -v k3d &> /dev/null; then
     echo "❌ k3d is not installed. Please install it first:"
     echo "   brew install k3d"
     exit 1
-fi
-
-# Check if cluster exists, create if it doesn't
-if ! k3d cluster list | grep -q "roam-dev"; then
-    echo "🏗️  Creating k3d cluster..."
-    k3d cluster create roam-dev \
-        --agents 1 --servers 1 \
-        -p "80:80@loadbalancer" \
-        -p "443:443@loadbalancer" \
-        -p "8001:8001@loadbalancer" \
-        --volume "$(pwd):/app/controller@server:*;agent:*"
-    
-    echo "✅ k3d cluster created successfully"
-else
-    echo "📋 Using existing k3d cluster 'roam-dev'"
 fi
 
 # Ensure we're using the right context
