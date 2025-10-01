@@ -2,25 +2,34 @@
 Example usage of the remote environment client.
 """
 
-import asyncio
+import os
 from remote_env import Env
 
 
-# Create an environment pointing to your controller
-env = Env(base_url="http://127.0.0.1:8001")
+env = Env(
+    base_url="http://roam.localtest.me",
+    should_run_locally=lambda: os.getenv("IS_LOCAL", "0") == "1",
+)
 
 
-# Example 1: Simple function
-@env.func
-def add_numbers():
-    return 1 + 1
+@env.fn
+def get_system():
+    import subprocess
+
+    return subprocess.check_output("uname -a", shell=True, text=True).strip()
 
 
-async def main():
-    result = await add_numbers()
-    print(f"1 + 1 = {result}")
-    await env.close()
+def main():
+    print("🖥️  Here:")
+    os.environ["IS_LOCAL"] = "1"
+    local_info = get_system.sync()
+    print(f"   {local_info}")
+
+    print("\n✨ Somewhere else:")
+    os.environ["IS_LOCAL"] = "0"
+    remote_info = get_system.sync()
+    print(f"   {remote_info}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

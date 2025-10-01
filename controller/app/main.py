@@ -8,9 +8,13 @@ class CodeRequest(BaseModel):
     code: str
 
 
-@app.get("/")
-async def read_root():
-    return {"Hello": "World"}
+@app.get("/healthz")
+def healthz():
+    """
+    Kubernetes uses this endpoint to check if our app is alive.
+    If this returns a 200 OK, the pod is considered healthy.
+    """
+    return {"ok": True}
 
 
 @app.post("/eval")

@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: roam-controller-dev
+  namespace: roam-controller
   labels:
     app: roam-controller-dev
 spec:
@@ -9,68 +10,60 @@ spec:
   selector:
     matchLabels:
       app: roam-controller-dev
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
         app: roam-controller-dev
     spec:
       containers:
-      - name: controller
-        image: ghcr.io/astral-sh/uv:debian
-        ports:
-        - containerPort: 8001
-        workingDir: /app
-        command: 
-          - /bin/bash
-          - -c
-          - |
-            cd /app &&
-            uv sync &&
-            uv run python -m app.main
-        env:
-        - name: HOST
-          value: "0.0.0.0"
-        - name: PORT
-          value: "8001"
-        volumeMounts:
-        - name: app-code
-          mountPath: /app
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 8001
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 8001
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: controller
+          image: ghcr.io/astral-sh/uv:debian
+          ports:
+            - name: http
+              containerPort: 8001
+          workingDir: /app
+          command:
+            - /bin/bash
+            - -c
+            - |
+              cd /app &&
+              uv sync &&
+              uv run python -m app.main
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8001"
+          volumeMounts:
+            - name: app-code
+              mountPath: /app
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
       volumes:
-      - name: app-code
-        hostPath:
-          path: /Users/quatton/Documents/GitHub/roam/controller
-          type: Directory
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: roam-controller-dev-service
-  labels:
-    app: roam-controller-dev
-spec:
-  type: LoadBalancer
-  ports:
-  - port: 8001
-    targetPort: 8001
-    protocol: TCP
-  selector:
-    app: roam-controller-dev
+        - name: app-code
+          hostPath:
+            path: /app/controller
+            type: Directory
