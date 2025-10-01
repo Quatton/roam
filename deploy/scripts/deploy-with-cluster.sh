@@ -7,8 +7,8 @@ if ! k3d cluster list | grep -q "roam-dev"; then
     echo "🏗️  Creating k3d cluster..."
     
     # Get the absolute paths to the controller and worker directories
-    CONTROLLER_DIR="$(dirname "$(pwd)")/controller"
-    WORKER_DIR="$(dirname "$(pwd)")/worker"
+    export CONTROLLER_DIR="$(dirname "$(pwd)")/controller"
+    export WORKER_DIR="$(dirname "$(pwd)")/worker"
     
     if [[ ! -d "$CONTROLLER_DIR" ]]; then
         echo "❌ Controller directory not found at: $CONTROLLER_DIR"
@@ -24,13 +24,16 @@ if ! k3d cluster list | grep -q "roam-dev"; then
     
     echo "📁 Mounting controller directory: $CONTROLLER_DIR"
     echo "📁 Mounting worker directory: $WORKER_DIR"
-    k3d cluster create roam-dev \
-        --agents 1 --servers 1 \
-        -p "80:80@loadbalancer" \
-        -p "443:443@loadbalancer" \
-        -p "8001:8001@loadbalancer" \
-        --volume "$CONTROLLER_DIR:/app/controller@server:*;agent:*" \
-        --volume "$WORKER_DIR:/app/worker@server:*;agent:*"
+    
+    # Use envsubst to substitute environment variables in the config
+    CONFIG_FILE="/tmp/k3d-roam-config.yaml"
+    envsubst < "$CONTROLLER_DIR/k3d-config.yaml" > "$CONFIG_FILE"
+    
+    echo "📋 Using k3d config: $CONFIG_FILE"
+    k3d cluster create --config "$CONFIG_FILE"
+    
+    # Clean up temporary config
+    rm -f "$CONFIG_FILE"
     
     echo "✅ k3d cluster created successfully"
 else

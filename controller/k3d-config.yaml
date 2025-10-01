@@ -1,7 +1,7 @@
 apiVersion: k3d.io/v1alpha5
 kind: Simple
 metadata:
-  name: roam-controller
+  name: roam-dev
 servers: 1
 agents: 1
 kubeAPI:
@@ -9,13 +9,25 @@ kubeAPI:
   hostIP: "127.0.0.1"
   hostPort: "6550"
 image: docker.io/rancher/k3s:v1.28.8-k3s1
+volumes:
+  - volume: ${CONTROLLER_DIR}:/app/controller
+    nodeFilters:
+      - server:*
+      - agent:*
+  - volume: ${WORKER_DIR}:/app/worker
+    nodeFilters:
+      - server:*
+      - agent:*
 ports:
+  - port: 80:80
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443
+    nodeFilters:
+      - loadbalancer
   - port: 8001:8001
     nodeFilters:
       - loadbalancer
-  - port: 30080:30080
-    nodeFilters:
-      - server:0
 options:
   k3d:
     wait: true
