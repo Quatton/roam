@@ -1,0 +1,39 @@
+# Ignore local development files
+.venv/
+.mypy_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Ignore git files
+.git/
+.gitignore
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore temporary files
+*.tmp
+*.temp
+.cache/
+
+# Ignore build artifacts
+dist/
+build/
+*.egg-info/
+
+# Keep these files we need
+!pyproject.toml
+!uv.lock
+!app/
+!k8s/
+!README.md

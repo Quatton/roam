@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Generic remote code execution library"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["httpx>=0.28.1"]
+dependencies = [
+    "httpx>=0.28.1",
+]
 
 [build-system]
 requires = ["hatchling"]

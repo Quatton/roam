@@ -16,23 +16,36 @@ fi
 
 echo "🚀 Setting up roam-controller on k3d (mode: $MODE)..."
 
-# Check if kubectl is installed
+# Check if required tools are installed
 if ! command -v kubectl &> /dev/null; then
     echo "❌ kubectl is not installed. Please install it first:"
     echo "   brew install kubectl"
     exit 1
 fi
 
-# Skip cluster creation since you already have it
-echo "🔧 Using existing cluster..."
-
-if [[ "$MODE" == "dev" ]]; then
-    echo "🛠 Development mode: will use host path mounting in Kubernetes"
-    
-    # Set source path for template substitution
-    export CONTROLLER_SOURCE_PATH="$(pwd)"
-    echo "📁 Using source path: $CONTROLLER_SOURCE_PATH"
+if ! command -v k3d &> /dev/null; then
+    echo "❌ k3d is not installed. Please install it first:"
+    echo "   brew install k3d"
+    exit 1
 fi
+
+# Check if cluster exists, create if it doesn't
+if ! k3d cluster list | grep -q "roam-dev"; then
+    echo "🏗️  Creating k3d cluster..."
+    k3d cluster create roam-dev \
+        --agents 1 --servers 1 \
+        -p "80:80@loadbalancer" \
+        -p "443:443@loadbalancer" \
+        -p "8001:8001@loadbalancer" \
+        --volume "$(pwd):/app/controller@server:*;agent:*"
+    
+    echo "✅ k3d cluster created successfully"
+else
+    echo "📋 Using existing k3d cluster 'roam-dev'"
+fi
+
+# Ensure we're using the right context
+kubectl config use-context k3d-roam-dev
 
 # Wait for cluster to be ready
 echo "⏳ Waiting for cluster to be ready..."
@@ -123,3 +136,6 @@ echo "   http://localhost:8001"
 echo ""
 echo "🧹 To clean up:"
 echo "   k3d cluster delete roam-dev"
+echo ""
+echo "🔄 To recreate cluster:"
+echo "   k3d cluster delete roam-dev && ./deploy.sh $MODE"

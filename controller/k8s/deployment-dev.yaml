@@ -21,6 +21,7 @@ spec:
       labels:
         app: roam-controller-dev
     spec:
+      serviceAccountName: roam-controller
       containers:
         - name: controller
           image: ghcr.io/astral-sh/uv:debian
@@ -33,15 +34,16 @@ spec:
             - -c
             - |
               cd /app &&
+              rm -rf .venv .mypy_cache __pycache__ &&
               uv sync &&
-              uv run python -m app.main
+              uv run uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
           env:
             - name: HOST
               value: "0.0.0.0"
             - name: PORT
               value: "8001"
           volumeMounts:
-            - name: app-code
+            - name: controller-code
               mountPath: /app
           resources:
             requests:
@@ -63,7 +65,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:
-        - name: app-code
+        - name: controller-code
           hostPath:
             path: /app/controller
             type: Directory
