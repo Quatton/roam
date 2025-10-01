@@ -6,7 +6,7 @@ metadata:
   labels:
     app: roam-workers
 spec:
-  replicas: 2  # Start with 2 warm workers
+  replicas: 2 # Start with 2 warm workers
   selector:
     matchLabels:
       app: roam-workers
@@ -16,39 +16,39 @@ spec:
         app: roam-workers
     spec:
       containers:
-      - name: worker
-        image: ghcr.io/astral-sh/uv:debian
-        workingDir: /app
-        command:
-          - /bin/bash
-          - -c
-          - |
-            cd /app/worker &&
-            export UV_PROJECT_ENVIRONMENT=/tmp/venv &&
-            uv sync &&
-            uv run python roam_worker.py
-        env:
-        - name: REDIS_HOST
-          value: "redis.roam-controller.svc.cluster.local"
-        volumeMounts:
-        - name: controller-code
-          mountPath: /app/controller
-        - name: worker-code
-          mountPath: /app/worker
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "50m"
-          limits:
-            memory: "128Mi"
-            cpu: "100m"
+        - name: worker
+          image: ghcr.io/astral-sh/uv:debian
+          workingDir: /app
+          command:
+            - /bin/bash
+            - -c
+            - |
+              cd /app/worker &&
+              export UV_PROJECT_ENVIRONMENT=/tmp/venv &&
+              uv sync &&
+              uv run python roam_worker.py
+          env:
+            - name: REDIS_HOST
+              value: "redis.roam-controller.svc.cluster.local"
+          volumeMounts:
+            - name: controller-code
+              mountPath: /app/controller
+            - name: worker-code
+              mountPath: /app/worker
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
       volumes:
-      - name: controller-code
-        hostPath:
-          path: /app/controller
-          type: Directory
-      - name: worker-code
-        hostPath:
-          path: /app/worker
-          type: Directory
+        - name: controller-code
+          hostPath:
+            path: /app/controller
+            type: Directory
+        - name: worker-code
+          hostPath:
+            path: /app/worker
+            type: Directory
       restartPolicy: Always
