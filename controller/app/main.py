@@ -70,140 +70,145 @@ async def execute_job(job_id: str, request: JobRequest):
     """Execute a job in a dedicated Kubernetes Job."""
     try:
         jobs[job_id].status = "running"
-        
+
         # Configure Kubernetes client (uses in-cluster config in pod)
         config.load_incluster_config()
         batch_v1 = client.BatchV1Api()
         core_v1 = client.CoreV1Api()
-        
+
         # Encode the Python code as base64 for the configmap
         code_b64 = base64.b64encode(request.code.encode()).decode()
-        
+
         # Create requirements command if needed
         install_cmd = ""
         if request.requirements:
             reqs = " ".join(request.requirements)
-            install_cmd = f"pip install {reqs} && "
-        
+            install_cmd = f"pip install {reqs} >/dev/null 2>&1 && "
+
         # Create Kubernetes Job manifest
         job_name = f"roam-job-{job_id[:8]}"
         job_manifest = {
             "apiVersion": "batch/v1",
             "kind": "Job",
-            "metadata": {
-                "name": job_name,
-                "namespace": "roam-controller"
-            },
+            "metadata": {"name": job_name, "namespace": "roam-controller"},
             "spec": {
                 "ttlSecondsAfterFinished": 300,  # Clean up after 5 minutes
                 "template": {
                     "spec": {
                         "restartPolicy": "Never",
-                        "containers": [{
-                            "name": "job-runner",
-                            "image": "python:3.12-slim",
-                            "command": ["bash", "-c"],
-                            "args": [f"""
+                        "containers": [
+                            {
+                                "name": "job-runner",
+                                "image": "python:3.12-slim",
+                                "command": ["bash", "-c"],
+                                "args": [
+                                    f"""
                                 echo '{code_b64}' | base64 -d > /tmp/job.py &&
                                 {install_cmd}python /tmp/job.py
-                            """],
-                            "resources": {
-                                "requests": {"memory": "128Mi", "cpu": "100m"},
-                                "limits": {"memory": "512Mi", "cpu": "500m"}
+                            """
+                                ],
+                                "resources": {
+                                    "requests": {"memory": "128Mi", "cpu": "100m"},
+                                    "limits": {"memory": "512Mi", "cpu": "500m"},
+                                },
                             }
-                        }]
+                        ],
                     }
-                }
-            }
+                },
+            },
         }
-        
+
         # Create the job
-        batch_v1.create_namespaced_job(
-            namespace="roam-controller",
-            body=job_manifest
-        )
-        
+        batch_v1.create_namespaced_job(namespace="roam-controller", body=job_manifest)
+
         # Wait for job completion (with timeout)
         timeout = 300  # 5 minutes
         check_interval = 2  # seconds
         elapsed = 0
-        
+
         while elapsed < timeout:
             try:
                 job_status = batch_v1.read_namespaced_job_status(
-                    name=job_name,
-                    namespace="roam-controller"
+                    name=job_name, namespace="roam-controller"
                 )
-                
+
                 if job_status.status.succeeded:
                     # Job completed successfully, get the logs
                     pods = core_v1.list_namespaced_pod(
                         namespace="roam-controller",
-                        label_selector=f"job-name={job_name}"
+                        label_selector=f"job-name={job_name}",
                     )
-                    
+
                     if pods.items:
                         pod_name = pods.items[0].metadata.name
                         logs = core_v1.read_namespaced_pod_log(
-                            name=pod_name,
-                            namespace="roam-controller"
+                            name=pod_name, namespace="roam-controller"
                         )
-                        
+
+                        # Extract only the user output between markers
+                        user_output = logs
+                        start_marker = "===ROAM_OUTPUT_START==="
+                        end_marker = "===ROAM_OUTPUT_END==="
+
+                        start_idx = logs.find(start_marker)
+                        end_idx = logs.find(end_marker)
+
+                        if start_idx != -1 and end_idx != -1:
+                            user_output = logs[
+                                start_idx + len(start_marker) : end_idx
+                            ].strip()
+
                         # Try to parse output
                         try:
-                            result = json.loads(logs.strip())
+                            result = json.loads(user_output.strip())
                         except json.JSONDecodeError:
-                            result = logs.strip()
-                        
+                            result = user_output.strip()
+
                         jobs[job_id].status = "completed"
                         jobs[job_id].result = result
                         break
-                    
+
                 elif job_status.status.failed:
                     # Job failed, get error logs
                     pods = core_v1.list_namespaced_pod(
                         namespace="roam-controller",
-                        label_selector=f"job-name={job_name}"
+                        label_selector=f"job-name={job_name}",
                     )
-                    
+
                     error_msg = "Job failed"
                     if pods.items:
                         pod_name = pods.items[0].metadata.name
                         try:
                             logs = core_v1.read_namespaced_pod_log(
-                                name=pod_name,
-                                namespace="roam-controller"
+                                name=pod_name, namespace="roam-controller"
                             )
                             error_msg = logs
                         except Exception:
                             pass
-                    
+
                     jobs[job_id].status = "failed"
                     jobs[job_id].error = error_msg
                     break
-                    
+
                 # Job still running, wait
                 await asyncio.sleep(check_interval)
                 elapsed += check_interval
-                
+
             except ApiException as e:
                 jobs[job_id].status = "failed"
                 jobs[job_id].error = f"Kubernetes API error: {e}"
                 break
-        
+
         if elapsed >= timeout:
             jobs[job_id].status = "failed"
             jobs[job_id].error = f"Job timed out after {timeout} seconds"
-        
+
         # Clean up the job (optional, since we have TTL)
         try:
-            batch_v1.delete_namespaced_job(
-                name=job_name,
-                namespace="roam-controller"
-            )
+            batch_v1.delete_namespaced_job(name=job_name, namespace="roam-controller")
         except Exception:
             pass  # Ignore cleanup errors
-            
+
     except Exception as e:
         jobs[job_id].status = "failed"
         jobs[job_id].error = str(e)
