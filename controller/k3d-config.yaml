@@ -34,10 +34,7 @@ options:
     timeout: "60s"
     disableLoadbalancer: false
   k3s:
-    extraArgs:
-      - arg: --disable=traefik
-        nodeFilters:
-          - server:*
+    extraArgs: []
   kubeconfig:
     updateDefaultKubeconfig: true
     switchCurrentContext: true

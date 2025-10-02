@@ -23,7 +23,7 @@ spec:
             - /bin/bash
             - -c
             - |
-              cd /app/worker &&
+              cd /app &&
               export UV_PROJECT_ENVIRONMENT=/tmp/venv &&
               uv sync &&
               uv run python roam_worker.py
@@ -31,10 +31,8 @@ spec:
             - name: REDIS_HOST
               value: "redis.roam-controller.svc.cluster.local"
           volumeMounts:
-            - name: controller-code
-              mountPath: /app/controller
             - name: worker-code
-              mountPath: /app/worker
+              mountPath: /app
           resources:
             requests:
               memory: "64Mi"
@@ -43,10 +41,6 @@ spec:
               memory: "128Mi"
               cpu: "100m"
       volumes:
-        - name: controller-code
-          hostPath:
-            path: /app/controller
-            type: Directory
         - name: worker-code
           hostPath:
             path: /app/worker
