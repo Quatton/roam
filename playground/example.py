@@ -6,10 +6,10 @@ import os
 import logging
 from remote_env import Env
 
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(levelname)s: %(message)s",
-)
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format="%(levelname)s: %(message)s",
+# )
 
 
 env = Env(
