@@ -6,10 +6,10 @@ import os
 import logging
 from remote_env import Env
 
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(levelname)s: %(message)s",
-# )
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(levelname)s: %(message)s",
+)
 
 
 env = Env(
@@ -26,13 +26,13 @@ def get_system():
 
 
 def main():
-    print("🖥️  Here:")
-    os.environ["IS_LOCAL"] = "1"
-    local_info = get_system.sync()
-    print(f"   {local_info}")
+    # print("🖥️  Here:")
+    # os.environ["IS_LOCAL"] = "1"
+    # local_info = get_system.sync()
+    # print(f"   {local_info}")
 
     print("\n✨ Somewhere else:")
-    os.environ["IS_LOCAL"] = "0"
+    # os.environ["IS_LOCAL"] = "0"
     remote_info = get_system.sync()
     print(f"   {remote_info}")
 
